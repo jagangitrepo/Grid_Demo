@@ -1,4 +1,12 @@
-import { Component, Input, ChangeDetectionStrategy , ChangeDetectorRef} from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy , ChangeDetectorRef, OnInit, NgZone} from '@angular/core';
+import { Observable, interval } from 'rxjs';
+import { map, takeWhile, finalize } from 'rxjs/operators';
+import * as _ from 'underscore';
+
+interface GridElem{
+  index:string;
+  bgcolor:string;
+}
 
 @Component({
   selector: 'grid-elem',
@@ -22,11 +30,11 @@ export class GridElementComponent  {
 
 @Component({
   selector: 'grid-list',
-  template: `<div class="wrapper">  <grid-elem  *ngFor="let obj of ilist" [index]="obj" [bgcolor]="blue"> </grid-elem></div> <p>{{ check() }}</p>`,
+  template: `<div class="wrapper">  <grid-elem  *ngFor="let obj of ilist" [index]="obj.index" [bgcolor]="obj.bgcolor"> </grid-elem></div> <p>{{ check() }}</p>`,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GridListComponent  {
-  @Input() ilist: string[];
+  @Input() ilist: GridElem[];
 
   check()
   {
@@ -36,12 +44,30 @@ export class GridListComponent  {
 
 @Component({
   selector: 'grid',
-  template: `<grid-list [ilist]="list"></grid-list> <p>{{ check() }}</p> `
+  template: `<grid-list [ilist]=list></grid-list> <p>{{ check() }}</p> <p> {{ count$ | async }} </p>`
 })
-export class GridComponent  {
-  list=["1","2","3","4","5","6","7","8","9"];
+export class GridComponent implements OnInit  {
+  list:GridElem[] = [{index:"1", bgcolor:""}, {index:"2", bgcolor:""}, {index:"3", bgcolor:""}];
+
+  countDown = 10;
+  countCompleted = false;
+  count$: Observable<number>;
+  constructor(private _ngZone:NgZone) {}
   check()
   {
       console.log("Grid-Component: Checked..")
+  }
+
+   ngOnInit() {
+      console.log(_.isEqual([{index:"1", bgcolor:""}, {index:"2", bgcolor:""}, {index:"3", bgcolor:""}], [{index:"1", bgcolor:""}, {index:"4", bgcolor:""}, {index:"3", bgcolor:""}]));
+
+this._ngZone.runOutsideAngular(() => {
+      const timer = interval(1000);
+      timer.pipe(
+      map(i => this.countDown - i),
+      takeWhile(i => i > 0),
+      finalize(() => ( this._ngZone.run(() => {this.list = [{index:"4", bgcolor:""}, {index:"2", bgcolor:""}, {index:"6", bgcolor:""}]}))
+    ));
+    });   
   }
 }
